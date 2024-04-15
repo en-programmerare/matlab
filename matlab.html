@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="sv">
+    <head>
+        <title>Han sa Matlab!</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta charset="utf-8">
+        <style>
+            .wholescreen {
+                position: fixed;
+                width: 100%;
+                height: 100%;
+                padding:0;
+                margin: 0;
+                top: 0;
+                left: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-direction: column;
+            }
+
+            #matlab {
+                background-color: cornflowerblue;
+                border-style: none;
+                border-radius: 5px;
+                font-size: 20px;
+                padding: 20px;
+            }
+
+            #matlab:hover {
+                animation: spin;
+                animation-duration: 0.5s;
+                animation-timing-function: ease-in-out;
+                animation-iteration-count: infinite;
+            }
+
+            #merinfo {
+                border-radius: 5px;
+                border-style: none;
+
+            }
+
+            #merinfo::backdrop {
+                background-color: rgba(24, 0, 24, 0.753)
+            }
+            #ggr {
+                display: inline-block;
+            }
+            #ggr:hover {
+                animation: spin;
+                animation-duration: 0.5s;
+                animation-timing-function: ease-in-out;
+                animation-iteration-count: infinite;
+            }
+            @keyframes spin {
+                0% {
+                    transform: scale(1) rotate(0deg);
+                }
+
+                50% {
+                    transform: scale(1.1) rotate(3deg);
+                }
+                100% {
+                    transform: scale(1) rotate(0deg);
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wholescreen">
+            <div>
+                Ken har sagt Matlab <output id="ggr">0 gånger</output> idag.
+                <br>
+                <br>
+            </div>
+            <div>
+                <button type="button" id="matlab">Han sa Matlab.</button>
+            </div>
+        </div>
+
+        <dialog id="merinfo">
+            Nej, det är fel. Han har sagt Matlab så här många gånger idag:<br>
+            <input type="number" id="korrekt" min="0"><br>
+            <button type="button" id="ok">Spara och stäng</button> <button type="button" id="exportera">Exportera data</button>
+        </dialog>
+        <script defer>
+            (function() {
+                const LOCAL_STORAGE_ID = "sagda_matlab";
+
+                let count = 0;
+                const button = document.querySelector("#matlab");
+                const output = document.querySelector("#ggr");
+                const dialog = document.querySelector("#merinfo");
+                const closeDialogButton = document.querySelector("#ok");
+                const countInput = document.querySelector("#korrekt");
+                const exportButton = document.querySelector("#exportera");
+
+                const now = new Date();
+                const today = {
+                    year: now.getFullYear(),
+                    month: now.getMonth(),
+                    day: now.getDate()
+                };
+
+                
+                let history = getHistory();
+
+                onPageLoad();
+
+
+                function onPageLoad() {
+                    let todaysHistory = findTodaysHistory();
+                
+                    if (todaysHistory !== undefined) {
+                        count = todaysHistory.count;
+                        updateUI();
+                    }
+                }
+
+                /**
+                 * @return {number}
+                 */
+                function findTodaysIndex() {
+                    return history.findIndex(object => 
+                       object.year === today.year
+                    && object.month === today.month 
+                    && object.day === today.day);
+                }
+
+                /**
+                 * @return {{year: number, month: number, day: number, count: number} | undefined}
+                 */
+                function findTodaysHistory() {
+                    let index = findTodaysIndex();
+
+                    if (index === -1)
+                        return undefined;
+
+                    return history[findTodaysIndex()];
+                }
+
+                /**
+                 * @return {{year: number, month: number, day: number, count: number}[]}
+                 */
+                function getHistory() {
+                    let storedJSON = localStorage.getItem(LOCAL_STORAGE_ID);
+
+                    if (storedJSON === null)
+                        return []
+
+                    let historyObject = JSON.parse(storedJSON);
+
+                    return historyObject.history;
+                }
+
+                /**
+                 * @argument history {{year: number, month: number, day: number, count: number}[]}
+                 */
+                function saveHistory(history) {
+                    let historyObject = {
+                        history: history
+                    };
+                    jsonToStore = JSON.stringify(historyObject);
+                    localStorage.setItem(LOCAL_STORAGE_ID, jsonToStore);
+                }
+
+                /**
+                 * @argument number {number}
+                 * @return {string}
+                 */
+                function formatOutputText(number) {
+                    return `${number} gång${number == 1 ? "" : "er"}`;
+                }
+
+                function updateHistory() {
+                    let index = findTodaysIndex();
+                    let value = {
+                        year: today.year,
+                        month: today.month,
+                        day: today.day,
+                        count: count
+                    };
+
+                    if (index == -1) {
+                        history.push(value);
+                    }
+                    else {
+                        history[index] = value;
+                    }
+                }
+
+                function updateUI() {
+                    setText(output, formatOutputText(count));
+                }
+                /**
+                 * @argument element {Element}
+                 * @argument text {String}
+                 * @return void
+                 */
+                function setText(element, text) {
+                    element.innerHTML = text
+                        .replace(/</gm, "&lt;")
+                        .replace(/>/gm, "&gt;")
+                        .replace(/"/gm, "&quot;")
+                        .replace(/'/gm, "&apos;")
+                        .replace(/\(/gm, "&#40;")
+                        .replace(/\)/gm, "&#41;")
+                        .replace(/\{/gm, "&#123;")
+                        .replace(/\}/gm, "&#125;")
+                        .replace(/\[/gm, "&#91;")
+                        .replace(/\]/gm, "&#93;")
+                        .replace(/`/gm, "&#96;");
+                }
+
+                button.addEventListener("click", () => {
+                    count++;
+                    updateUI();
+                    updateHistory();
+                    
+                    saveHistory(history);
+                });
+
+                output.addEventListener("click", () => {
+                    dialog.showModal();
+                    countInput.value = count;
+                });
+
+                closeDialogButton.addEventListener("click", () => {
+                    let correctedCount = parseInt(countInput.value);
+
+                    if (isNaN(correctedCount) || correctedCount < 0)
+                        return;
+
+                    count = correctedCount;
+                    updateUI();
+                    updateHistory();
+                    saveHistory(history);
+                    dialog.close();
+                });
+
+                exportButton.addEventListener("click", () => {
+                    let blob = new Blob([generateCsv()], {type: "text/csv"});
+                    let url = URL.createObjectURL(blob);
+                    let a = document.createElement("a");
+                    a.download = "matlab.csv";
+                    a.href = url;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+
+
+                /**
+                 * @return {string}
+                 */
+                function generateCsv() {
+                    let result = "date,count"
+                    history.forEach(historyObject => {
+                        result += "\n" + 
+                        formatNumberForUseInDate(historyObject.year) + "-" + 
+                        formatNumberForUseInDate(historyObject.month + 1) + "-" + 
+                        formatNumberForUseInDate(historyObject.day) + "," +
+                        historyObject.count
+                    });
+                    return result;
+                }
+
+                /**
+                 * @param number {number}
+                 * @return {string}
+                 */
+                function formatNumberForUseInDate(number) {
+                    if (number >= 10)
+                        return number.toString();
+                    return "0" + number.toString();
+                }
+            })();
+        </script>
+    </body>
+</html>
